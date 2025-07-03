@@ -1,0 +1,86 @@
+import requests
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .models import Load
+
+from django.dispatch import receiver
+import telegram
+from django.conf import settings
+
+# Обработчик для Load (как было ранее)
+@receiver(post_save, sender=Load)
+def send_load_to_telegram(sender, instance, created, **kwargs):
+    if created:
+        bot = telegram.Bot(token=settings.TELEGRAM_BOT_TOKEN)
+        chat_id = settings.TELEGRAM_CHAT_ID
+        
+        # Формируем сообщение
+        message = "New Load Created:\n\n"
+        
+        fields = {
+            "Company Name": instance.company_name,
+            "Reference ID": instance.reference_id,
+            "Instructions": instance.instructions,
+            "Loads": instance.loads,
+            "Created By": instance.created_by.__str__() if instance.created_by else None,
+            "Created Date": instance.created_date,
+            "Load ID": instance.load_id,
+            "Trip ID": instance.trip_id,
+            "Customer/Broker": instance.customer_broker.__str__() if instance.customer_broker else None,
+            "Driver": instance.driver.__str__() if instance.driver else None,
+            "Co-Driver": instance.co_driver,
+            "Truck": instance.truck.__str__() if instance.truck else None,
+            "Dispatcher": instance.dispatcher.__str__() if instance.dispatcher else None,
+            "Load Status": instance.load_status,
+            "Tags": instance.tags.__str__() if instance.tags else None,
+            "Equipment Type": instance.equipment_type,
+            "Trip Status": instance.trip_status,
+            "Invoice Status": instance.invoice_status,
+            "Trip BIL Status": instance.trip_bil_status,
+            "Load Pay": str(instance.load_pay) if instance.load_pay else None,
+            "Driver Pay": str(instance.driver_pay) if instance.driver_pay else None,
+            "Total Pay": str(instance.total_pay) if instance.total_pay else None,
+            "Per Mile": str(instance.per_mile) if instance.per_mile else None,
+            "Miles": instance.mile,
+            "Empty Miles": instance.empty_mile,
+            "Total Miles": instance.total_miles,
+            "Flagged": "Yes" if instance.flagged else "No",
+            "Flagged Reason": instance.flagged_reason,
+            "Note": instance.note,
+            "Chat": instance.chat,
+            "AI": "Yes" if instance.ai else "No",
+            "Rate Confirmation": "Attached" if instance.rate_con else "Not attached",
+            "BOL": "Attached" if instance.bol else "Not attached",
+            "POD": "Attached" if instance.pod else "Not attached",
+            "Document": "Attached" if instance.document else "Not attached",
+            "Commercial Invoice": "Attached" if instance.commercial_invoice else "Not attached",
+        }
+        
+        for field_name, value in fields.items():
+            if value is not None:
+                message += f"{field_name}: {value}\n"
+        
+        try:
+            # Отправляем сообщение и сохраняем message_id
+            sent_message = bot.send_message(chat_id=chat_id, text=message)
+            instance.message_id = str(sent_message.message_id)  # Сохраняем ID сообщения
+            instance.save()  # Обновляем запись Load с message_id
+            
+            # Отправка файлов (если есть)
+            files = [
+                (instance.rate_con, "Rate Confirmation"),
+                (instance.bol, "BOL"),
+                (instance.pod, "POD"),
+                (instance.document, "Document"),
+                (instance.commercial_invoice, "Commercial Invoice")
+            ]
+            
+            for file_field, file_name in files:
+                if file_field:
+                    with file_field.open('rb') as file:
+                        bot.send_document(chat_id=chat_id, 
+                                       document=file, 
+                                       filename=f"{file_name}_{instance.id}")
+                        
+        except Exception as e:
+            print(f"Error sending to Telegram: {str(e)}")
