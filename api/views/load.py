@@ -12,7 +12,7 @@ from apps.load.models.driver import Pay, DriverPay, DriverExpense
 from apps.load.models.truck import Unit
 from apps.load.models.team import Team
 from api.dto.load import TeamSerializer
-
+from apps.auth.models import Company
 from apps.load.models import (
     Load, LoadTags, Driver, DriverTags, Trailer, 
     TrailerTags, TruckTags, Truck, Dispatcher,
@@ -476,12 +476,11 @@ class LoadTagsDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = LoadTagsSerializer
 
 
-
 from django.db.models import Q, Min, Max
 from datetime import datetime
 
-from django.db.models import Q, Min, Max
-from datetime import datetime
+
+
 
 class DriverPayCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -492,6 +491,8 @@ class DriverPayCreateView(APIView):
         pay_to = request.data.get('pay_to')
         driver_id = request.data.get('driver')
         notes = request.data.get('notes', '')
+        invoice_number = request.data.get('invoice_number')  # NEW: Get invoice_number from POST
+        weekly_number = request.data.get('weekly_number')    # NEW: Get weekly_number from POST
 
         # Sana formatini tekshirish va konvertatsiya qilish
         try:
@@ -520,6 +521,8 @@ class DriverPayCreateView(APIView):
             pay_to=pay_to_date,
             amount=0.0,
             notes=notes,
+            invoice_number=invoice_number,  # NEW: Save invoice_number
+            weekly_number=weekly_number,    # NEW: Save weekly_number
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
@@ -669,12 +672,23 @@ class DriverPayCreateView(APIView):
             driver.cost = (driver.cost or 0) + escrow_weekly
             driver.save()
 
-        # Expenses calculation
+        # UPDATED: Filter expenses by date range and update invoice_number, weekly_number
         expenses = DriverExpense.objects.filter(
             driver=driver,
             expense_date__gte=pay_from_date,
             expense_date__lte=pay_to_date
         )
+
+        # NEW: Update the filtered expenses with invoice_number and weekly_number
+        if invoice_number or weekly_number:
+            update_fields = {}
+            if invoice_number:
+                update_fields['invoice_number'] = invoice_number
+            if weekly_number:
+                update_fields['weekly_number'] = weekly_number
+            
+            if update_fields:
+                expenses.update(**update_fields)
 
         total_expenses = 0.0
         total_income = 0.0
@@ -740,25 +754,39 @@ class DriverPayCreateView(APIView):
             "generate_date": driver_pay.created_at.strftime('%Y-%m-%d %H:%M:%S') if driver_pay.created_at else None,
             "report_date": driver_pay.updated_at.strftime('%Y-%m-%d %H:%M:%S') if driver_pay.updated_at else None,
             "search_from": driver_pay.pay_from.strftime('%Y-%m-%d') if driver_pay.pay_from else None,
-            "search_to": driver_pay.pay_to.strftime('%Y-%m-%d') if driver_pay.pay_to else None
+            "search_to": driver_pay.pay_to.strftime('%Y-%m-%d') if driver_pay.pay_to else None,
+            "company_name": driver.user.company_name if driver.user else None,
+            "invoice_number": driver_pay.invoice_number,  # NEW: Add invoice_number to response
+            "weekly_number": driver_pay.weekly_number,    # NEW: Add weekly_number to response
         }
 
-        # User ma'lumotlari
-        user_info = {
-            "email": driver.user.email if driver.user else None,
-            "company_name": driver.user.company_name if driver.user else None,
-            "fax": driver.user.fax if driver.user else None,
-            "address": driver.user.address if driver.user else None,
-            "country": driver.user.country if driver.user else None,
-            "telephone": driver.user.telephone if driver.user else None,
-            "state": driver.user.state if driver.user else None,
-            "postal_zip": driver.user.postal_zip if driver.user else None
-        }
+        # UPDATED: Get company information from Company model instead of driver.user
+        try:
+            company = Company.objects.first()  # Get first company (no filter needed)
+            company_info = {
+                "company_name": company.company_name if company else None,
+                "phone": company.phone if company else None,
+                "fax": company.fax if company else None,
+                "state": company.state if company else None,
+                "city": company.city if company else None,
+                "zip": company.zip if company else None,
+                "company_logo": company.company_logo.url if company and company.company_logo else None,
+            }
+        except Company.DoesNotExist:
+            company_info = {
+                "company_name": None,
+                "phone": None,
+                "fax": None,
+                "state": None,
+                "city": None,
+                "zip": None,
+                "company_logo": None,
+            }
 
         # Yakuniy javob
         response_data = {
             "driver": driver_info,
-            "user_admin": user_info,
+            "company_info": company_info,  # UPDATED: Changed from user_admin to company_info
             "loads": load_details,
             "total_load_pays": {
                 "Formula": " + ".join(total_loads_formula) if total_loads_formula else "N/A",

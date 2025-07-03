@@ -7,7 +7,7 @@ from apps.auth.models import User, UserLocation, Company, Role, Permission
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
-        fields = ('id', 'name', 'created_at', 'updated_at')
+        fields = '__all__'
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:

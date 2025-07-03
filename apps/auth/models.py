@@ -92,10 +92,13 @@ class UserLocation(models.Model):
 
 
 class Company(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='admin_company')
+    company_name = models.CharField(max_length=255, blank=True, null=True)
+    phone = models.CharField(max_length=255, blank=True, null=True)
+    fax = models.CharField(max_length=255, blank=True, null=True)
+    state = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=255, blank=True, null=True)
+    zip = models.CharField(max_length=255, blank=True, null=True)
+    company_logo = models.FileField(upload_to='company-logo', blank=True, null=True)
 
     def __str__(self):
         return self.name

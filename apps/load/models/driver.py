@@ -167,6 +167,8 @@ class DriverPay(models.Model):
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
     loads = models.JSONField(blank=True, null=True, default=list)  # Loads JSON sifatida saqlanadi
+    invoice_number = models.IntegerField(blank=True, null=True)
+    weekly_number = models.IntegerField(blank=True, null=True)
 
 
     def __str__(self):
@@ -183,6 +185,8 @@ class DriverExpense(models.Model):
     description = models.CharField(max_length=255)
     amount = models.FloatField()
     expense_date = models.DateField()
+    invoice_number = models.IntegerField(blank=True, null=True)
+    weekly_number = models.IntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
