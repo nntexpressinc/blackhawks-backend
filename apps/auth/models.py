@@ -98,10 +98,11 @@ class Company(models.Model):
     state = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=255, blank=True, null=True)
     zip = models.CharField(max_length=255, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
     company_logo = models.FileField(upload_to='company-logo', blank=True, null=True)
 
     def __str__(self):
-        return self.name
+        return self.company_name
     
 
 class Permission(models.Model):
