@@ -126,15 +126,7 @@ class AmazonRelayProcessedRecord(models.Model):
         verbose_name_plural = "Amazon Relay Processed Records"
 
 
-# Load modelini to'liq ko'rsatmayapman, lekin kerakli fieldlar bor deb faraz qilaman
-class Load(models.Model):
-    """Existing Load model - faqat kerakli fieldlarni ko'rsataman"""
-    reference_id = models.CharField(max_length=100, unique=True)
-    amazon_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    # boshqa fieldlar...
-    
-    def __str__(self):
-        return f"Load: {self.reference_id}"
+# Load modelini to'liq ko'rsatmayapman, lekin kerakli fieldlar bor deb faraz qilama
 
 
 # signals.py
