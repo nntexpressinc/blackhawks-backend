@@ -1,6 +1,6 @@
 from django.urls import path
 from api.views.chat import ChatList, ChatDetail
-
+from api.views import amazon
 from api.views.auth import (
     RegisterUserView, ListUsersView, 
     UserDetailView, CustomTokenObtainPairView,
@@ -32,6 +32,13 @@ from api.views.load import (
     TeamDetailView)
 
 urlpatterns = [
+
+    path('amazon/upload/', amazon.upload_amazon_relay_file, name='upload_file'),
+    path('amazon/status/<int:payment_id>/', amazon.get_payment_status, name='payment_status'),
+    path('amazon/history/', amazon.get_payment_history, name='payment_history'),
+    path('amazon/delete/<int:payment_id>/', amazon.delete_payment, name='delete_payment'),
+
+
     path('auth/register/', RegisterUserView.as_view(), name='register-user'),
     path('auth/users/', ListUsersView.as_view(), name='list-users'),
     path('auth/users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),

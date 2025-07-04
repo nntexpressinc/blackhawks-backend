@@ -104,6 +104,7 @@ class Load(models.Model):
     group_message_id = models.CharField(max_length=50, null=True, blank=True)
     unit_id = models.ForeignKey(Unit, related_name='unit_load', on_delete=models.CASCADE, blank=True, null=True)
     team_id = models.ForeignKey(Team, related_name='team_load', on_delete=models.CASCADE, blank=True, null=True)
+    amazon_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
 
     def get_coordinates(self, address):
         """Manzilni koordinatalarga aylantirish (Nominatim API)"""
@@ -242,3 +243,4 @@ class Load(models.Model):
             logger.error(f"Load saqlashda xatolik: {str(e)}")
             # Xatolik bo'lsa ham saqlashni davom ettiramiz
             super().save(*args, **kwargs)
+
