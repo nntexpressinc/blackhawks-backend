@@ -6,6 +6,10 @@ from datetime import datetime
 from django.db.models import Sum
 from decimal import Decimal
 from rest_framework.pagination import PageNumberPagination
+from django.core.files.base import ContentFile
+
+# PDF generation imports
+from utils.pdf_generator import generate_driver_pay_pdf, generate_company_driver_pdf
 
 
 from apps.load.models.driver import Pay, DriverPay, DriverExpense
@@ -815,5 +819,55 @@ class DriverPayCreateView(APIView):
                 "Result": f"${total_pay:.2f}"
             }
         }
+
+        # Generate PDF file and save to DriverPay model
+        try:
+            # Generate regular driver pay PDF
+            pdf_buffer = generate_driver_pay_pdf(response_data, driver, company_info)
+            pdf_filename = f"driver_pay_{driver.id}_{driver_pay.invoice_number}_{driver_pay.weekly_number}.pdf"
+            driver_pay.file.save(
+                pdf_filename,
+                ContentFile(pdf_buffer.getvalue()),
+                save=True
+            )
+            
+            # If driver is COMPANY_DRIVER, generate additional CD file
+            if driver.driver_type == 'COMPANY_DRIVER':
+                # Prepare loads data for CD file calculation
+                cd_loads_data = []
+                for load in filtered_loads:
+                    # Get loaded miles from load.mile field
+                    loaded_miles = load.mile if load.mile else 0
+                    
+                    # Get pickup and delivery locations
+                    pickup_location = "N/A"
+                    delivery_location = "N/A"
+                    
+                    for stop in load.stop.all():
+                        if stop.stop_name == 'PICKUP':
+                            pickup_location = f"{stop.city}, {stop.state}" if stop.city else stop.address1
+                        elif stop.stop_name == 'DELIVERY':
+                            delivery_location = f"{stop.city}, {stop.state}" if stop.city else stop.address1
+                    
+                    cd_loads_data.append({
+                        'load_number': load.load_id,
+                        'load_id': load.load_id,
+                        'loaded_miles': loaded_miles,
+                        'pickup_location': pickup_location,
+                        'delivery_location': delivery_location
+                    })
+                
+                # Generate CD PDF
+                cd_pdf_buffer = generate_company_driver_pdf(response_data, driver, cd_loads_data, company_info)
+                cd_pdf_filename = f"company_driver_pay_{driver.id}_{driver_pay.invoice_number}_{driver_pay.weekly_number}.pdf"
+                driver_pay.cd_file.save(
+                    cd_pdf_filename,
+                    ContentFile(cd_pdf_buffer.getvalue()),
+                    save=True
+                )
+                
+        except Exception as e:
+            print(f"PDF generation error: {str(e)}")
+            # Continue without failing the entire request if PDF generation fails
 
         return Response(response_data, status=status.HTTP_201_CREATED)

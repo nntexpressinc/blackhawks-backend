@@ -164,6 +164,7 @@ class DriverPay(models.Model):
     amount = models.FloatField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     file = models.FileField(upload_to='driver_pay_files/', blank=True, null=True)
+    cd_file = models.FileField(upload_to='driver_pay_cd_files/', blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
     loads = models.JSONField(blank=True, null=True, default=list)  # Loads JSON sifatida saqlanadi
