@@ -32,6 +32,20 @@ class DriverPaySerializer(serializers.ModelSerializer):
     class Meta:
         model = DriverPay
         fields = "__all__"
+        
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        # Company Driver ma'lumotlarini qo'shimcha ko'rsatish
+        if instance.driver and instance.driver.driver_type == 'COMPANY_DRIVER':
+            representation['company_driver_summary'] = {
+                'total_miles': instance.total_miles,
+                'miles_rate': instance.miles_rate,
+                'company_driver_pay': instance.company_driver_pay,
+                'calculation': f"{instance.total_miles or 0} miles × ${instance.miles_rate or 0.65} = ${instance.company_driver_pay or 0:.2f}"
+            }
+        
+        return representation
 
 
 class PaySerializer(serializers.ModelSerializer):

@@ -170,6 +170,12 @@ class DriverPay(models.Model):
     loads = models.JSONField(blank=True, null=True, default=list)  # Loads JSON sifatida saqlanadi
     invoice_number = models.IntegerField(blank=True, null=True)
     weekly_number = models.IntegerField(blank=True, null=True)
+    
+    # Company Driver fields
+    company_driver_data = models.JSONField(blank=True, null=True, default=dict)  # Company driver hisob-kitoblari
+    total_miles = models.IntegerField(blank=True, null=True)  # Jami miles
+    miles_rate = models.FloatField(default=0.65, blank=True, null=True)  # Per mile rate (0.65)
+    company_driver_pay = models.FloatField(blank=True, null=True)  # Total pay for company driver
 
 
     def __str__(self):
