@@ -1,5 +1,5 @@
 from django.contrib import admin
-from apps.load.models.amazon import AmazonRelayPayment
+# from apps.load.models.amazon import AmazonRelayPayment
 from apps.load.models.driver import Pay, DriverPay, DriverExpense
 from apps.load.models.truck import Unit
 from apps.load.models.team import Team
@@ -9,7 +9,7 @@ from apps.load.models import (
     DispatcherTags, EmployeeTags, CustomerBroker, 
     Stops, Employee, OtherPay, Commodities)
 
-admin.site.register(AmazonRelayPayment)
+# admin.site.register(AmazonRelayPayment)
 admin.site.register(DriverExpense)
 admin.site.register(Pay)
 admin.site.register(DriverPay)
