@@ -40,9 +40,10 @@ from apps.load.models.amazon import AmazonRelayPayment, AmazonRelayProcessedReco
 @admin.register(AmazonRelayPayment)
 class AmazonRelayPaymentAdmin(admin.ModelAdmin):
     list_display = ['uploaded_at', 'status', 'total_amount', 'loads_updated', 'processed_at', 'work_period_start', 'work_period_end', 'invoice_number', 'weekly_number']
-    list_filter = ['status', 'uploaded_at']
-    search_fields = ['work_period_start', 'work_period_end', 'invoice_number', 'weekly_number']
-    readonly_fields = ['uploaded_at', 'processed_at', 'total_amount', 'loads_updated', 'error_message', 'work_period_start', 'work_period_end', 'invoice_number', 'weekly_number']
+    list_filter = ['status', 'uploaded_at', 'work_period_start', 'work_period_end']
+    search_fields = ['invoice_number', 'weekly_number', 'status', 'error_message']
+    readonly_fields = ['uploaded_at', 'processed_at', 'total_amount', 'loads_updated', 'error_message']
+    fields = ['file', 'status', 'work_period_start', 'work_period_end', 'invoice_number', 'weekly_number', 'uploaded_at', 'processed_at', 'total_amount', 'loads_updated', 'error_message']
     
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
@@ -51,36 +52,44 @@ class AmazonRelayPaymentAdmin(admin.ModelAdmin):
 
 @admin.register(AmazonRelayProcessedRecord)
 class AmazonRelayProcessedRecordAdmin(admin.ModelAdmin):
-    list_display = ['payment', 'is_matched', 'matched_load', 'created_at']
-    list_filter = ['is_matched', 'payment__status', 'created_at']
-    search_fields = ['payment__invoice_number', 'payment__weekly_number', 'payment__work_period_start', 'payment__work_period_end', 'trip_id', 'load_id', 'matched_load__reference_id']
+    list_display = ['get_payment_invoice', 'get_payment_weekly', 'get_payment_work_start', 'get_payment_work_end', 'get_payment_status', 'trip_id', 'load_id', 'gross_pay', 'is_matched', 'matched_load']
+    list_filter = ['is_matched', 'payment__status', 'created_at', 'payment__work_period_start', 'payment__work_period_end']
+    search_fields = ['payment__invoice_number', 'payment__weekly_number', 'payment__work_period_start', 'payment__work_period_end', 'payment__status', 'trip_id', 'load_id', 'matched_load__reference_id', 'route', 'payment__error_message']
     
     def get_queryset(self, request):
-        """Faqat payment ma'lumotlari ko'rsatilsin"""
+        """Optimized queryset"""
         qs = super().get_queryset(request)
         return qs.select_related('payment', 'matched_load')
     
-    def has_change_permission(self, request, obj=None):
-        """O'zgartirish ruxsatini berish"""
-        return True
+    def get_payment_invoice(self, obj):
+        """Payment invoice number"""
+        return obj.payment.invoice_number if obj.payment.invoice_number else '-'
+    get_payment_invoice.short_description = 'Invoice Number'
+    get_payment_invoice.admin_order_field = 'payment__invoice_number'
     
-    def has_delete_permission(self, request, obj=None):
-        """O'chirish ruxsatini berish"""
-        return True
+    def get_payment_weekly(self, obj):
+        """Payment weekly number"""
+        return obj.payment.weekly_number if obj.payment.weekly_number else '-'
+    get_payment_weekly.short_description = 'Weekly Number'
+    get_payment_weekly.admin_order_field = 'payment__weekly_number'
     
-    fieldsets = (
-        ('Payment Information', {
-            'fields': ('payment',)
-        }),
-        ('Record Details', {
-            'fields': ('trip_id', 'load_id', 'route', 'gross_pay', 'start_date', 'end_date', 'distance'),
-            'classes': ('collapse',),
-        }),
-        ('Matching Information', {
-            'fields': ('matched_load', 'is_matched'),
-            'classes': ('collapse',),
-        }),
-    )
+    def get_payment_work_start(self, obj):
+        """Payment work period start"""
+        return obj.payment.work_period_start if obj.payment.work_period_start else '-'
+    get_payment_work_start.short_description = 'Work Start'
+    get_payment_work_start.admin_order_field = 'payment__work_period_start'
+    
+    def get_payment_work_end(self, obj):
+        """Payment work period end"""
+        return obj.payment.work_period_end if obj.payment.work_period_end else '-'
+    get_payment_work_end.short_description = 'Work End'
+    get_payment_work_end.admin_order_field = 'payment__work_period_end'
+    
+    def get_payment_status(self, obj):
+        """Payment status"""
+        return obj.payment.status
+    get_payment_status.short_description = 'Payment Status'
+    get_payment_status.admin_order_field = 'payment__status'
     
     def get_load_pay(self, obj):
         """Load modelidan load_pay ni olish"""
