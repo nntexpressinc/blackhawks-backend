@@ -35,6 +35,9 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.contrib import messages
 from apps.load.models.amazon import AmazonRelayPayment, AmazonRelayProcessedRecord
+
+
+@admin.register(AmazonRelayPayment)
 class AmazonRelayPaymentAdmin(admin.ModelAdmin):
     list_display = ['uploaded_at', 'status', 'total_amount', 'loads_updated', 'processed_at']
     list_filter = ['status', 'uploaded_at']
@@ -45,10 +48,17 @@ class AmazonRelayPaymentAdmin(admin.ModelAdmin):
             return self.readonly_fields + ['file']
         return self.readonly_fields
 
+@admin.register(AmazonRelayProcessedRecord)
 class AmazonRelayProcessedRecordAdmin(admin.ModelAdmin):
-    list_display = ['payment', 'trip_id', 'load_id', 'gross_pay', 'is_matched', 'matched_load']
+    list_display = ['payment', 'trip_id', 'load_id', 'get_load_pay', 'gross_pay', 'is_matched', 'matched_load']
     list_filter = ['is_matched', 'payment__status', 'created_at']
     search_fields = ['trip_id', 'load_id', 'matched_load__reference_id']
-
-admin.site.register(AmazonRelayPayment, AmazonRelayPaymentAdmin)
-admin.site.register(AmazonRelayProcessedRecord, AmazonRelayProcessedRecordAdmin)
+    
+    def get_load_pay(self, obj):
+        """Load modelidan load_pay ni olish"""
+        if obj.matched_load and hasattr(obj.matched_load, 'load_pay'):
+            return f"${obj.matched_load.load_pay}"
+        return "-"
+    
+    get_load_pay.short_description = 'Load Pay'
+    get_load_pay.admin_order_field = 'matched_load__load_pay'

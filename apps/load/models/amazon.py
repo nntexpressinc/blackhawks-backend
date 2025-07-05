@@ -1,4 +1,3 @@
-# models.py
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -264,12 +263,8 @@ def find_and_update_load(trip_id, load_id, gross_pay, main_id=None):
         
         # Load topilsa, amazon_amount ni yangilash
         if matched_load:
-            # Agar oldin amazon_amount bo'lsa, qo'shish
-            if matched_load.amazon_amount:
-                matched_load.amazon_amount += gross_pay
-            else:
-                matched_load.amazon_amount = gross_pay
-            
+            # Eski amazon_amount ni ochirib, yangi qiymat qo'yish
+            matched_load.amazon_amount = gross_pay
             matched_load.save()
             logger.info(f"Load {matched_load.reference_id} amazon_amount yangilandi: ${matched_load.amazon_amount}")
             
@@ -282,6 +277,3 @@ def find_and_update_load(trip_id, load_id, gross_pay, main_id=None):
     except Exception as e:
         logger.error(f"Load ni topish va yangilashda xatolik: {str(e)}")
         return None
-
-
-# admin.py
