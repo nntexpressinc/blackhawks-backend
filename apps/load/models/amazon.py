@@ -11,6 +11,9 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Load modelini import qilish (circular import oldini olish uchun pastda)
+from apps.load.models.load import Load
+
 class AmazonRelayPayment(models.Model):
     """Amazon Relay dan keladigan to'lov ma'lumotlarini saqlash uchun model"""
     
@@ -51,7 +54,7 @@ class AmazonRelayProcessedRecord(models.Model):
     distance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     # Load modeli bilan bog'lanish
-    matched_load = models.ForeignKey('load.Load', on_delete=models.SET_NULL, null=True, blank=True)
+    matched_load = models.ForeignKey(Load, on_delete=models.SET_NULL, null=True, blank=True)
     is_matched = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
