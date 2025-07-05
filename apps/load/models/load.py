@@ -105,7 +105,9 @@ class Load(models.Model):
     unit_id = models.ForeignKey(Unit, related_name='unit_load', on_delete=models.CASCADE, blank=True, null=True)
     team_id = models.ForeignKey(Team, related_name='team_load', on_delete=models.CASCADE, blank=True, null=True)
     amazon_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-
+    invoice_number = models.CharField(max_length=100, blank=True, null=True)
+    weekly_number = models.CharField(max_length=100, blank=True, null=True)
+    
     def get_coordinates(self, address):
         """Manzilni koordinatalarga aylantirish (Nominatim API)"""
         try:

@@ -18,7 +18,8 @@ class AmazonRelayPayment(models.Model):
         ('completed', 'Completed'),
         ('failed', 'Failed'),
     ]
-    
+    work_period_start = models.DateField(null=True, blank=True)
+    work_period_end = models.DateField(null=True, blank=True)
     file = models.FileField(upload_to='amazon_relay_files/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -26,6 +27,8 @@ class AmazonRelayPayment(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     loads_updated = models.IntegerField(default=0)
     error_message = models.TextField(blank=True)
+    invoice_number = models.CharField(max_length=100, blank=True, null=True)
+    weekly_number = models.CharField(max_length=100, blank=True, null=True)
     
     def __str__(self):
         return f"Amazon Relay Payment - {self.uploaded_at.strftime('%Y-%m-%d %H:%M')}"
@@ -265,6 +268,7 @@ def find_and_update_load(trip_id, load_id, gross_pay, main_id=None):
         if matched_load:
             # Eski amazon_amount ni ochirib, yangi qiymat qo'yish
             matched_load.amazon_amount = gross_pay
+            matched_load.invoice_status = 'Paid'  # Invoice statusini yangilash
             matched_load.save()
             logger.info(f"Load {matched_load.reference_id} amazon_amount yangilandi: ${matched_load.amazon_amount}")
             

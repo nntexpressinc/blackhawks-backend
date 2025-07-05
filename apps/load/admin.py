@@ -39,9 +39,10 @@ from apps.load.models.amazon import AmazonRelayPayment, AmazonRelayProcessedReco
 
 @admin.register(AmazonRelayPayment)
 class AmazonRelayPaymentAdmin(admin.ModelAdmin):
-    list_display = ['uploaded_at', 'status', 'total_amount', 'loads_updated', 'processed_at']
+    list_display = ['uploaded_at', 'status', 'total_amount', 'loads_updated', 'processed_at', 'work_period_start', 'work_period_end', 'invoice_number', 'weekly_number']
     list_filter = ['status', 'uploaded_at']
-    readonly_fields = ['uploaded_at', 'processed_at', 'total_amount', 'loads_updated', 'error_message']
+    search_fields = ['work_period_start', 'work_period_end', 'invoice_number', 'weekly_number']
+    readonly_fields = ['uploaded_at', 'processed_at', 'total_amount', 'loads_updated', 'error_message', 'work_period_start', 'work_period_end', 'invoice_number', 'weekly_number']
     
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
@@ -50,9 +51,36 @@ class AmazonRelayPaymentAdmin(admin.ModelAdmin):
 
 @admin.register(AmazonRelayProcessedRecord)
 class AmazonRelayProcessedRecordAdmin(admin.ModelAdmin):
-    list_display = ['payment', 'trip_id', 'load_id', 'get_load_pay', 'gross_pay', 'is_matched', 'matched_load']
+    list_display = ['payment', 'is_matched', 'matched_load', 'created_at']
     list_filter = ['is_matched', 'payment__status', 'created_at']
-    search_fields = ['trip_id', 'load_id', 'matched_load__reference_id']
+    search_fields = ['payment__invoice_number', 'payment__weekly_number', 'payment__work_period_start', 'payment__work_period_end', 'trip_id', 'load_id', 'matched_load__reference_id']
+    
+    def get_queryset(self, request):
+        """Faqat payment ma'lumotlari ko'rsatilsin"""
+        qs = super().get_queryset(request)
+        return qs.select_related('payment', 'matched_load')
+    
+    def has_change_permission(self, request, obj=None):
+        """O'zgartirish ruxsatini berish"""
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        """O'chirish ruxsatini berish"""
+        return True
+    
+    fieldsets = (
+        ('Payment Information', {
+            'fields': ('payment',)
+        }),
+        ('Record Details', {
+            'fields': ('trip_id', 'load_id', 'route', 'gross_pay', 'start_date', 'end_date', 'distance'),
+            'classes': ('collapse',),
+        }),
+        ('Matching Information', {
+            'fields': ('matched_load', 'is_matched'),
+            'classes': ('collapse',),
+        }),
+    )
     
     def get_load_pay(self, obj):
         """Load modelidan load_pay ni olish"""

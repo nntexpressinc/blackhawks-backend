@@ -691,6 +691,17 @@ class DriverPayCreateView(APIView):
             if update_fields:
                 expenses.update(**update_fields)
 
+        # NEW: Update the filtered loads with invoice_number and weekly_number
+        if invoice_number or weekly_number:
+            load_update_fields = {}
+            if invoice_number:
+                load_update_fields['invoice_number'] = invoice_number
+            if weekly_number:
+                load_update_fields['weekly_number'] = weekly_number
+            
+            if load_update_fields:
+                filtered_loads.update(**load_update_fields)
+
         total_expenses = 0.0
         total_income = 0.0
         expense_details = []
