@@ -129,20 +129,49 @@ def process_excel_file(payment_instance):
         df['Start Date'] = pd.to_datetime(df['Start Date'], errors='coerce')
         df['End Date'] = pd.to_datetime(df['End Date'], errors='coerce')
         
-        # Trip ID bo'yicha guruhlash va Gross Pay ni qo'shish
-        trip_groups = df.groupby('Trip ID').agg({
-            'Gross Pay': 'sum',
-            'Load ID': 'first',
-            'Route': 'first',
-            'Start Date': 'first',
-            'End Date': 'first',
-            'Distance (Mi)': 'sum'
-        }).reset_index()
+        # Unique ID yaratish: Trip ID bo'lsa uni, bo'lmasa Load ID ni ishlatish
+        def get_unique_id(row):
+            """Unique ID yaratish funksiyasi"""
+            trip_id = row['Trip ID']
+            load_id = row['Load ID']
+            
+            # Trip ID bor va bo'sh emas bo'lsa
+            if pd.notna(trip_id) and str(trip_id).strip():
+                return ('trip', str(trip_id).strip())
+            # Trip ID bo'lmasa, Load ID ni ishlatish
+            elif pd.notna(load_id) and str(load_id).strip():
+                return ('load', str(load_id).strip())
+            else:
+                # Ikkala ID ham bo'lmasa, unique qiymat yaratish
+                return ('unknown', f"unknown_{row.name}")
+        
+        # Har bir qator uchun unique ID qo'shish
+        df['unique_id'] = df.apply(get_unique_id, axis=1)
+        
+        # Unique ID bo'yicha guruhlash
+        def group_by_unique_id(group):
+            """Guruh bo'yicha ma'lumotlarni agregat qilish"""
+            first_row = group.iloc[0]
+            unique_id_tuple = first_row['unique_id']
+            
+            return pd.Series({
+                'id_type': unique_id_tuple[0],
+                'id_value': unique_id_tuple[1],
+                'Trip ID': first_row['Trip ID'] if pd.notna(first_row['Trip ID']) else None,
+                'Load ID': first_row['Load ID'] if pd.notna(first_row['Load ID']) else None,
+                'Gross Pay': group['Gross Pay'].sum(),
+                'Route': first_row['Route'],
+                'Start Date': first_row['Start Date'],
+                'End Date': first_row['End Date'],
+                'Distance (Mi)': group['Distance (Mi)'].sum()
+            })
+        
+        grouped_data = df.groupby('unique_id').apply(group_by_unique_id).reset_index(drop=True)
         
         total_amount = 0
         loads_updated = 0
         
-        for _, row in trip_groups.iterrows():
+        for _, row in grouped_data.iterrows():
             trip_id = row['Trip ID']
             load_id = row['Load ID']
             gross_pay = Decimal(str(row['Gross Pay']))
@@ -160,7 +189,9 @@ def process_excel_file(payment_instance):
             )
             
             # Load modelini topish va yangilash
-            matched_load = find_and_update_load(trip_id, load_id, gross_pay)
+            # Asosiy ID (Trip ID yoki Load ID) bo'yicha qidirish
+            main_id = row['id_value']
+            matched_load = find_and_update_load(trip_id, load_id, gross_pay, main_id)
             
             if matched_load:
                 processed_record.matched_load = matched_load
@@ -187,12 +218,12 @@ def process_excel_file(payment_instance):
         raise
 
 
-def find_and_update_load(trip_id, load_id, gross_pay):
+def find_and_update_load(trip_id, load_id, gross_pay, main_id=None):
     """Load modelini topish va amazon_amount ni yangilash"""
     try:
         matched_load = None
         
-        # Birinchi Trip ID bo'yicha qidirish
+        # Birinchi Trip ID bo'yicha qidirish (agar mavjud bo'lsa)
         if trip_id and pd.notna(trip_id):
             trip_id_str = str(trip_id).strip()
             if trip_id_str:
@@ -218,6 +249,19 @@ def find_and_update_load(trip_id, load_id, gross_pay):
                     logger.warning(f"Bir nechta Load topildi Load ID bo'yicha: {load_id_str}")
                     matched_load = Load.objects.filter(reference_id=load_id_str).first()
         
+        # Agar main_id berilgan bo'lsa va hali ham topilmagan bo'lsa, uni ham sinab ko'rish
+        if not matched_load and main_id:
+            main_id_str = str(main_id).strip()
+            if main_id_str:
+                try:
+                    matched_load = Load.objects.get(reference_id=main_id_str)
+                    logger.info(f"Load topildi Main ID bo'yicha: {main_id_str}")
+                except Load.DoesNotExist:
+                    logger.info(f"Load topilmadi Main ID bo'yicha: {main_id_str}")
+                except Load.MultipleObjectsReturned:
+                    logger.warning(f"Bir nechta Load topildi Main ID bo'yicha: {main_id_str}")
+                    matched_load = Load.objects.filter(reference_id=main_id_str).first()
+        
         # Load topilsa, amazon_amount ni yangilash
         if matched_load:
             # Agar oldin amazon_amount bo'lsa, qo'shish
@@ -232,7 +276,7 @@ def find_and_update_load(trip_id, load_id, gross_pay):
             return matched_load
         
         else:
-            logger.warning(f"Load topilmadi: Trip ID={trip_id}, Load ID={load_id}")
+            logger.warning(f"Load topilmadi: Trip ID={trip_id}, Load ID={load_id}, Main ID={main_id}")
             return None
             
     except Exception as e:
