@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class AmazonRelayProcessedRecord(models.Model):
     distance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     # Load modeli bilan bog'lanish
-    matched_load = models.ForeignKey('Load', on_delete=models.SET_NULL, null=True, blank=True)
+    matched_load = models.ForeignKey('load.Load', on_delete=models.SET_NULL, null=True, blank=True)
     is_matched = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -61,9 +62,6 @@ class AmazonRelayProcessedRecord(models.Model):
     class Meta:
         verbose_name = "Amazon Relay Processed Record"
         verbose_name_plural = "Amazon Relay Processed Records"
-
-
-from apps.load.models import Load
 
 
 # signals.py
@@ -88,7 +86,27 @@ def process_excel_file(payment_instance):
         
         # Excel faylni o'qish
         file_path = payment_instance.file.path
-        df = pd.read_excel(file_path)
+        
+        # Fayl mavjudligini tekshirish
+        if not os.path.exists(file_path):
+            raise ValidationError("Excel fayl topilmadi")
+        
+        # Excel faylni o'qish (har xil formatlarni qo'llab-quvvatlash)
+        try:
+            if file_path.endswith('.xlsx'):
+                df = pd.read_excel(file_path, engine='openpyxl')
+            elif file_path.endswith('.xls'):
+                df = pd.read_excel(file_path, engine='xlrd')
+            else:
+                raise ValidationError("Fayl formati noto'g'ri. Faqat .xlsx yoki .xls fayllar qabul qilinadi")
+        except Exception as e:
+            raise ValidationError(f"Excel faylni o'qishda xatolik: {str(e)}")
+        
+        # DataFrame bo'sh emasligini tekshirish
+        if df.empty:
+            raise ValidationError("Excel fayl bo'sh")
+        
+        logger.info(f"Excel fayl o'qildi: {len(df)} ta qator")
         
         # Kerakli ustunlarni tekshirish
         required_columns = ['Trip ID', 'Load ID', 'Gross Pay', 'Route', 'Start Date', 'End Date', 'Distance (Mi)']
@@ -130,6 +148,11 @@ def process_excel_file(payment_instance):
         df['End Date'] = pd.to_datetime(df['End Date'], errors='coerce')
         
         # Trip ID bo'yicha guruhlash va Gross Pay ni qo'shish
+        # NaN qiymatlarni boshqarish uchun fillna ishlatamiz
+        df['Trip ID'] = df['Trip ID'].fillna('UNKNOWN')
+        df['Load ID'] = df['Load ID'].fillna('UNKNOWN')
+        
+        # Trip ID bo'yicha guruhlash
         trip_groups = df.groupby('Trip ID').agg({
             'Gross Pay': 'sum',
             'Load ID': 'first',
@@ -139,6 +162,8 @@ def process_excel_file(payment_instance):
             'Distance (Mi)': 'sum'
         }).reset_index()
         
+        logger.info(f"Guruhlangan ma'lumotlar: {len(trip_groups)} ta yagona Trip ID")
+        
         total_amount = 0
         loads_updated = 0
         
@@ -147,11 +172,15 @@ def process_excel_file(payment_instance):
             load_id = row['Load ID']
             gross_pay = Decimal(str(row['Gross Pay']))
             
+            # UNKNOWN qiymatlarni None ga o'zgartirish
+            trip_id = None if trip_id == 'UNKNOWN' else trip_id
+            load_id = None if load_id == 'UNKNOWN' else load_id
+            
             # Processed record yaratish
             processed_record = AmazonRelayProcessedRecord.objects.create(
                 payment=payment_instance,
-                trip_id=trip_id if pd.notna(trip_id) else None,
-                load_id=load_id if pd.notna(load_id) else None,
+                trip_id=trip_id,
+                load_id=load_id,
                 route=row['Route'] if pd.notna(row['Route']) else '',
                 gross_pay=gross_pay,
                 start_date=row['Start Date'].date() if pd.notna(row['Start Date']) else None,
@@ -169,6 +198,9 @@ def process_excel_file(payment_instance):
                 
                 loads_updated += 1
                 total_amount += gross_pay
+                logger.info(f"Load muvaffaqiyatli yangilandi: {matched_load.reference_id}, Amount: ${gross_pay}")
+            else:
+                logger.warning(f"Load topilmadi: Trip ID={trip_id}, Load ID={load_id}")
         
         # Payment instanceni yangilash
         payment_instance.status = 'completed'
@@ -189,13 +221,15 @@ def process_excel_file(payment_instance):
 
 def find_and_update_load(trip_id, load_id, gross_pay):
     """Load modelini topish va amazon_amount ni yangilash"""
+    from .load import Load  # Circular import oldini olish uchun local import
+    
     try:
         matched_load = None
         
         # Birinchi Trip ID bo'yicha qidirish
-        if trip_id and pd.notna(trip_id):
+        if trip_id:
             trip_id_str = str(trip_id).strip()
-            if trip_id_str:
+            if trip_id_str and trip_id_str != 'nan':
                 try:
                     matched_load = Load.objects.get(reference_id=trip_id_str)
                     logger.info(f"Load topildi Trip ID bo'yicha: {trip_id_str}")
@@ -206,9 +240,9 @@ def find_and_update_load(trip_id, load_id, gross_pay):
                     matched_load = Load.objects.filter(reference_id=trip_id_str).first()
         
         # Agar Trip ID bo'yicha topilmasa, Load ID bo'yicha qidirish
-        if not matched_load and load_id and pd.notna(load_id):
+        if not matched_load and load_id:
             load_id_str = str(load_id).strip()
-            if load_id_str:
+            if load_id_str and load_id_str != 'nan':
                 try:
                     matched_load = Load.objects.get(reference_id=load_id_str)
                     logger.info(f"Load topildi Load ID bo'yicha: {load_id_str}")
