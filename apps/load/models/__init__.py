@@ -8,4 +8,3 @@ from .otherpay import OtherPay
 from .stops import Stops
 from .trailer import Trailer, TrailerTags
 from .truck import Truck, TruckTags
-from .amazon import AmazonRelayPayment, AmazonRelayProcessedRecord
