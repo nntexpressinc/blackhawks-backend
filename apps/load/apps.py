@@ -8,3 +8,4 @@ class LoadConfig(AppConfig):
 
     def ready(self):
         import apps.load.signals
+        import apps.load.models.amazon

@@ -317,4 +317,3 @@ def detect_changes(sender, instance, **kwargs):
             pass
 
 
-
