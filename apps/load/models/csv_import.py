@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class CSVImport(models.Model):
     """Google Sheets CSV import uchun model"""
     
-    csv_file = models.FileField(upload_to='csv_imports/')
+    csv_file = models.FileField(upload_to='amazon_relay_files/')
     start_row = models.IntegerField(default=2, help_text="Qaysi qatordan boshlash (Excel formatida, masalan 2)")
     end_row = models.IntegerField(help_text="Qaysi qatorgacha (Excel formatida, masalan 2200)")
     created_at = models.DateTimeField(auto_now_add=True)

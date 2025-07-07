@@ -4,8 +4,8 @@ import threading
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.forms.models import model_to_dict
-from .models import Load
-from .models.csv_import import CSVImport
+from apps.load.models.load import Load
+from apps.load.models.csv_import import CSVImport
 from requests.exceptions import ConnectionError, Timeout, RequestException
 
 # Telegram xabarlarini asinxron ravishda yuborish

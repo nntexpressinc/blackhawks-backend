@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models.csv_import import CSVImport
+from apps.load.models.csv_import import CSVImport
 import logging
 
 logger = logging.getLogger(__name__)
