@@ -6,7 +6,9 @@ class Stops(models.Model):
 
     STOP_NAME_CHOICES = [
         ('PICKUP', 'Pickup'),
-        ('DELIVERY', 'Delivery')
+        ('DELIVERY', 'Delivery'),
+        ('Stop-2', 'Stop-2'),
+        ('Stop-3', 'Stop-3'),
     ]
 
     STATE_CHOICES = [
@@ -62,7 +64,7 @@ class Stops(models.Model):
         ('WY', 'Wyoming'),
     ]
     load = models.ForeignKey(Load, on_delete=models.CASCADE, related_name='stops', blank=True, null=True)
-    stop_name = models.CharField(blank=True, null=True)
+    stop_name = models.CharField(max_length=20, choices=STOP_NAME_CHOICES, blank=True, null=True)
     company_name = models.CharField(max_length=50, blank=True, null=True)
     contact_name = models.CharField(max_length=50, blank=True, null=True)
     reference_id = models.CharField(max_length=50, blank=True, null=True)

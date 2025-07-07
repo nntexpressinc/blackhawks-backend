@@ -6,7 +6,7 @@ from apps.load.models import (
     Load, LoadTags, Driver, DriverTags, Trailer, 
     TrailerTags, TruckTags, Truck, Dispatcher,
     DispatcherTags, EmployeeTags, CustomerBroker, 
-    Stops, Employee, OtherPay, Commodities)
+    Stops, Employee, OtherPay, Commodities, CSVImport)
 
 # Register models
 admin.site.register(DriverExpense)
@@ -99,3 +99,17 @@ class AmazonRelayProcessedRecordAdmin(admin.ModelAdmin):
     
     get_load_pay.short_description = 'Load Pay'
     get_load_pay.admin_order_field = 'matched_load__load_pay'
+
+# CSV Import Admin
+@admin.register(CSVImport)
+class CSVImportAdmin(admin.ModelAdmin):
+    list_display = ['id', 'csv_file', 'start_row', 'end_row', 'processed', 'success_count', 'error_count', 'created_at']
+    list_filter = ['processed', 'created_at']
+    search_fields = ['csv_file']
+    readonly_fields = ['processed', 'success_count', 'error_count', 'error_log', 'created_at']
+    fields = ['csv_file', 'start_row', 'end_row', 'processed', 'success_count', 'error_count', 'error_log', 'created_at']
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.processed:  # Agar qayta ishlangan bo'lsa
+            return self.readonly_fields + ['csv_file', 'start_row', 'end_row']
+        return self.readonly_fields

@@ -88,7 +88,7 @@ class Load(models.Model):
     flagged_reason = models.CharField(max_length=100, blank=True, null=True)
     note = models.TextField(blank=True, null=True)
     chat = models.TextField(blank=True, null=True)
-    ai = models.BooleanField(blank=True, null=True)
+    ai = models.BooleanField(blank=True, null=True) 
     rate_con = models.FileField(blank=True, null=True)
     bol = models.FileField(blank=True, null=True)
     pod = models.FileField(blank=True, null=True)

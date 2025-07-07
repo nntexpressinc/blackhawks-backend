@@ -5,6 +5,7 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.forms.models import model_to_dict
 from .models import Load
+from .models.csv_import import CSVImport
 from requests.exceptions import ConnectionError, Timeout, RequestException
 
 # Telegram xabarlarini asinxron ravishda yuborish
@@ -315,5 +316,23 @@ def detect_changes(sender, instance, **kwargs):
         except Load.DoesNotExist:
             # Bu yangi obyekt
             pass
+
+# CSV Import signal
+@receiver(post_save, sender=CSVImport)
+def process_csv_import(sender, instance, created, **kwargs):
+    """CSV import yaratilgandan so'ng CSV ni qayta ishlash"""
+    if created and not instance.processed:
+        # CSV ni asinxron qayta ishlash
+        thread = threading.Thread(target=process_csv_async, args=(instance,))
+        thread.daemon = True
+        thread.start()
+
+def process_csv_async(import_instance):
+    """CSV faylni asinxron qayta ishlash"""
+    try:
+        import_instance.process_csv()
+        print(f"CSV import #{import_instance.id} muvaffaqiyatli qayta ishlandi")
+    except Exception as e:
+        print(f"CSV import #{import_instance.id} xatolik: {str(e)}")
 
 
